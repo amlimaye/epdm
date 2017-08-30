@@ -37,3 +37,9 @@ typedef struct population_t {
     std::list<relation_t>           relations;                          //list of relations owned by this population
     std::list<relation_address_t>   relation_addresses;                 //list of relation_addresses owned by other populations, but pointing to this population
 } population_t;
+
+typedef struct ensemble_t {
+    double                      current_time;
+    double                      total_propensity;
+    std::list<population_t>     populations;
+} ensemble_t;
