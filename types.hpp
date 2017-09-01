@@ -1,3 +1,6 @@
+#ifndef __TYPES_H
+#define __TYPES_H
+
 #include<string>
 #include<list>
 #include<tuple>
@@ -43,3 +46,5 @@ typedef struct ensemble_t {
     double                      total_propensity;
     std::list<population_t>     populations;
 } ensemble_t;
+
+#endif
