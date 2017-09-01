@@ -2,12 +2,13 @@
 #include "constants.hpp"
 #include "utilities.hpp"
 #include <iostream>
+#include <numeric>
 
 std::list<reaction_t> get_reactions_for_species_pair(const population_t p1, const population_t p2) {
     std::list<reaction_t> rxn_list;
     if ((p1.species.name == "void") && (p2.species.name == "void")) {
-        rxn_list.push_back(spawn_rxn(species_utilities::make_h_species()));
-        rxn_list.push_back(spawn_rxn(species_utilities::make_p_species()));
+        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_h_species()));
+        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_p_species()));
     }
     return rxn_list;
 }
@@ -32,6 +33,10 @@ void add_population_to_ensemble(ensemble_t& ensemble, const population_t& popula
 
         //add reactions for this species pair
         new_relation.reactions = get_reactions_for_species_pair(p1,p2);
+        new_relation.tot_partial_propensity = 0.0;
+        for (auto& rxn: new_relation.reactions) {
+            new_relation.tot_partial_propensity += rxn.partial_propensity;
+        }
 
         //make a relation_address_t held by the _second_ member of the pair
         relation_address_t new_relation_address;
@@ -41,7 +46,19 @@ void add_population_to_ensemble(ensemble_t& ensemble, const population_t& popula
         //put them in the right places
         p1.relations.push_back(new_relation);
         p2.relation_addresses.push_back(new_relation_address);
+
+        //update the propensities of p1
+        p1.tot_partial_propensities.push_back(new_relation.tot_partial_propensity);
+        p1.tot_propensity = std::accumulate(p1.tot_partial_propensities.begin(),
+                                            p1.tot_partial_propensities.end(),
+                                            0.0);
+
+        //update the propensities of the ensemble
+        ensemble.total_propensity += p1.tot_propensity;
     }
+}
+
+void delete_population_from_ensemble(ensemble_t& ensemble) {
 }
 
 ensemble_t initialize_ensemble() {
@@ -52,6 +69,7 @@ ensemble_t initialize_ensemble() {
 
     //ensembles always start with the void population
     add_population_to_ensemble(ensemble,pop_utilities::make_void_population());
+    std::cout << ensemble.total_propensity << std::endl;
 
     return ensemble;
 }
