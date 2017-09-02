@@ -37,6 +37,7 @@ typedef struct population_t {
     species_t                       species;                            //"owner species" of this population
     long int                        num_molecules;                      //total number of molecules of this population currently present
     double                          tot_propensity;                     //sum_i pp_i for all relations owned by this population
+    double                          tot_full_propensity;                //n_i * (sum_i pp_i), where n_i is the number of species in this population
     std::list<double>               tot_partial_propensities;           //[pp_1, ...] for all relations owned by this population
     std::list<relation_t>           relations;                          //list of relations owned by this population
     std::list<relation_address_t>   relation_addresses;                 //list of relation_addresses owned by other populations, but pointing to this population

@@ -1,5 +1,6 @@
 #include "types.hpp"
 #include <iostream>
+#include <tuple>
 
 namespace species_utilities {
 	species_t make_void_species() {
@@ -34,8 +35,8 @@ namespace pop_utilities {
 	    return void_pop;
 	}
 
-	void print_population(population_t in){
-		std::cout << "Population of " << in.species.name << std::endl;
+	void print_population(const population_t& in){
+		std::cout << "Population {" << in.species.name << "}"<< std::endl;
 		std::cout << "\tn = " << in.num_molecules << std::endl;
 	}
 }
@@ -66,5 +67,16 @@ namespace rxn_utilities {
 	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_p_species()));
 	    }
 	    return rxn_list;
+	}
+
+	void print_reaction(const reaction_t& in) {
+		std::cout << "Reactants:" << std::endl;
+		for (auto rxt : in.reactants) {
+			std::cout << std::get<1>(rxt) << " " << std::get<0>(rxt).name << std::endl;
+		}
+		std::cout << "Products:" << std::endl;
+		for (auto prd : in.products) {
+			std::cout << std::get<1>(prd) << " " << std::get<0>(prd).name << std::endl;
+		}
 	}
 }
