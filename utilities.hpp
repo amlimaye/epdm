@@ -1,4 +1,5 @@
 #include "types.hpp"
+#include <iostream>
 
 namespace species_utilities {
 	species_t make_void_species() {
@@ -32,6 +33,11 @@ namespace pop_utilities {
 
 	    return void_pop;
 	}
+
+	void print_population(population_t in){
+		std::cout << "Population of " << in.species.name << std::endl;
+		std::cout << "\tn = " << in.num_molecules << std::endl;
+	}
 }
 
 namespace rxn_utilities {
@@ -53,4 +59,12 @@ namespace rxn_utilities {
 	    return new_reaction;
 	}
 
+	std::list<reaction_t> get_reactions_for_species_pair(const population_t p1, const population_t p2) {
+	    std::list<reaction_t> rxn_list;
+	    if ((p1.species.name == "void") && (p2.species.name == "void")) {
+	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_h_species()));
+	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_p_species()));
+	    }
+	    return rxn_list;
+	}
 }

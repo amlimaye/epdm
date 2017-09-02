@@ -3,15 +3,8 @@
 #include "utilities.hpp"
 #include <iostream>
 #include <numeric>
-
-std::list<reaction_t> get_reactions_for_species_pair(const population_t p1, const population_t p2) {
-    std::list<reaction_t> rxn_list;
-    if ((p1.species.name == "void") && (p2.species.name == "void")) {
-        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_h_species()));
-        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_p_species()));
-    }
-    return rxn_list;
-}
+#include <random>
+#include <cmath>
 
 void add_population_to_ensemble(ensemble_t& ensemble, const population_t& population) {
     //make tuples representing all _new_ bimolecular reactions with this species
@@ -32,7 +25,7 @@ void add_population_to_ensemble(ensemble_t& ensemble, const population_t& popula
         new_relation.owner_population_ptr = &p1;
 
         //add reactions for this species pair
-        new_relation.reactions = get_reactions_for_species_pair(p1,p2);
+        new_relation.reactions = rxn_utilities::get_reactions_for_species_pair(p1,p2);
         new_relation.tot_partial_propensity = 0.0;
         for (auto& rxn: new_relation.reactions) {
             new_relation.tot_partial_propensity += rxn.partial_propensity;
@@ -56,9 +49,19 @@ void add_population_to_ensemble(ensemble_t& ensemble, const population_t& popula
         //update the propensities of the ensemble
         ensemble.total_propensity += p1.tot_propensity;
     }
+
+    //finally, add the population to the ensemble
+    ensemble.populations.push_back(population);
 }
 
 void delete_population_from_ensemble(ensemble_t& ensemble) {
+}
+
+void take_timestep(ensemble_t& ensemble) {
+    //sample the next time
+    std::uniform_real_distribution<double> distribution(0.0,1.0);
+    double rand = distribution(ensemble.generator);
+    double next_time = (1.0/ensemble.total_propensity)*std::log((1.0/rand));
 }
 
 ensemble_t initialize_ensemble() {
@@ -69,7 +72,10 @@ ensemble_t initialize_ensemble() {
 
     //ensembles always start with the void population
     add_population_to_ensemble(ensemble,pop_utilities::make_void_population());
-    std::cout << ensemble.total_propensity << std::endl;
+
+    for (auto& elem : ensemble.populations) {
+        pop_utilities::print_population(elem);
+    }
 
     return ensemble;
 }

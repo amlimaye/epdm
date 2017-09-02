@@ -1,9 +1,10 @@
 #ifndef __TYPES_H
 #define __TYPES_H
 
-#include<string>
-#include<list>
-#include<tuple>
+#include <string>
+#include <list>
+#include <tuple>
+#include <random>
 
 //need to forward-declare some structs to avoid circular dependencies
 struct population_t;
@@ -45,6 +46,7 @@ typedef struct ensemble_t {
     double                      current_time;
     double                      total_propensity;
     std::list<population_t>     populations;
+    std::default_random_engine  generator;
 } ensemble_t;
 
 #endif
