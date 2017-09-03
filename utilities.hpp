@@ -70,13 +70,19 @@ namespace rxn_utilities {
 	}
 
 	void print_reaction(const reaction_t& in) {
-		std::cout << "Reactants:" << std::endl;
-		for (auto rxt : in.reactants) {
-			std::cout << std::get<1>(rxt) << " " << std::get<0>(rxt).name << std::endl;
+		auto it = in.reactants.begin();
+		for (int i = 0; i < in.reactants.size()-1; i++) {
+			std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << " + ";
+			std::advance(it,1);
 		}
-		std::cout << "Products:" << std::endl;
-		for (auto prd : in.products) {
-			std::cout << std::get<1>(prd) << " " << std::get<0>(prd).name << std::endl;
+
+		std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << " --> ";
+
+		auto it2 = in.products.begin();
+		for (int i = 0; i < in.products.size()-1; i++) {
+			std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << " + ";
+			std::advance(it2,1);
 		}
+		std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << std::endl;
 	}
 }
