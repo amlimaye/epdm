@@ -13,11 +13,27 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t&& population)
     //make tuples representing all _new_ bimolecular reactions with this species
     std::list<std::tuple<population_t&, population_t&>> all_pairs;
     for (auto& pop : ensemble.populations) {
+        /*
+            this caused me a few minutes of grief, so leaving a detailed comment.
+            std::make_tuple makes tuples of values by default 
+                (https://stackoverflow.com/questions/19054347)
+            here, we actually want tuples of _references_ since we are going to
+            fiddle with the members of the population_t struct inside the for loop.
+            one forces creation of a tuple of _references_ with std::ref()
+        */
         all_pairs.push_back(std::make_tuple(std::ref(pop),std::ref(population)));
     }
 
     //create relations for each pair
     for (auto& pair : all_pairs) {
+        /*
+            another few minutes of grief here.
+            the std::get<>() in this function is out of control. AFAICT there isn't
+            a way to unpack _references_ from a tuple in C++11. Structured bindings in
+            C++17 solve this issue, but I chose not to use that to maintain C++11
+            compatibility
+        */
+
         //make a relation_t object held by the _first_ member of the pair
         relation_t new_relation;
         new_relation.owner_population_ptr = &std::get<0>(pair);
@@ -73,13 +89,11 @@ const reaction_t& sample_reaction(const ensemble_t& ensemble, double rand) {
     //select a relation from the selected population's list    
     double g = (ensemble.total_propensity*rand - s2)/(pop_it->num_molecules);
     auto rel_it = pop_it->relations.begin();
-    if (g != 0.0) {                                         //need to special case for if there's only one population; 
-        while (g > 0) {
-            g -= rel_it->tot_partial_propensity;
-            std::advance(rel_it,1);
-        }
-        rel_it = std::prev(rel_it);
+    while (g > 0) {
+        g -= rel_it->tot_partial_propensity;
+        std::advance(rel_it,1);
     }
+    rel_it = std::prev(rel_it);
     g += rel_it-> tot_partial_propensity;
 
     //select a reaction from this relation's list
