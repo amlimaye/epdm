@@ -5,13 +5,19 @@
 #include <numeric>
 #include <random>
 #include <cmath>
+#include <fstream>
+#include <json/json.h>
 
-void add_population_to_ensemble(ensemble_t& ensemble, population_t&& population) {
+//forward-declare
+std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t&, const species_t&);
+void update_molecule_count(population_t*, long int);
+
+void add_population_to_ensemble(ensemble_t& ensemble, population_t population) {
     //add the population to the ensemble
     ensemble.populations.push_back(population);
 
     //make tuples representing all _new_ bimolecular reactions with this species
-    std::list<std::tuple<population_t&, population_t&>> all_pairs;
+    std::list<std::tuple<population_t*, population_t*>> all_pairs;
     for (auto& pop : ensemble.populations) {
         /*
             this caused me a few minutes of grief, so leaving a detailed comment.
@@ -21,7 +27,7 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t&& population)
             fiddle with the members of the population_t struct inside the for loop.
             one forces creation of a tuple of _references_ with std::ref()
         */
-        all_pairs.push_back(std::make_tuple(std::ref(pop),std::ref(population)));
+        all_pairs.push_back(pop,ensemble.populations.back());
     }
 
     //create relations for each pair
@@ -33,6 +39,9 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t&& population)
             C++17 solve this issue, but I chose not to use that to maintain C++11
             compatibility
         */
+
+        population_t& first_elem = std::get<0>(pair);
+        population_t& second_elem = std::get<1>(pair);
 
         //make a relation_t object held by the _first_ member of the pair
         relation_t new_relation;
@@ -57,10 +66,7 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t&& population)
         std::get<1>(pair).relation_addresses.push_back(new_relation_address);
 
         //update the propensities of p1
-        std::get<0>(pair).tot_partial_propensities.push_back(new_relation.tot_partial_propensity);
-        std::get<0>(pair).tot_propensity = std::accumulate(std::get<0>(pair).tot_partial_propensities.begin(),
-                                                           std::get<0>(pair).tot_partial_propensities.end(),
-                                                           0.0);
+        std::get<0>(pair).tot_propensity += new_relation.tot_partial_propensity;
         std::get<0>(pair).tot_full_propensity = std::get<0>(pair).tot_propensity*std::get<0>(pair).num_molecules;
     }
 
@@ -69,9 +75,6 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t&& population)
     for (auto pop : ensemble.populations) {
         ensemble.total_propensity += pop.tot_full_propensity;
     }
-}
-
-void delete_population_from_ensemble(ensemble_t& ensemble) {
 }
 
 const reaction_t& sample_reaction(const ensemble_t& ensemble, double rand) {
@@ -116,8 +119,101 @@ void take_timestep(ensemble_t& ensemble) {
 
     //sample the next time and the next reaction
     double next_time = (1.0/ensemble.total_propensity)*std::log((1.0/r1));
+    ensemble.current_time += next_time;
     auto next_rxn = sample_reaction(ensemble,r2);
+
+    //loop through each of the products
+    for (auto prod_tup : next_rxn.products) {
+        auto prod_species = std::get<0>(prod_tup);
+        auto prod_stoich = std::get<1>(prod_tup);
+
+        size_t position;
+        bool found;
+        std::tie(found,position) = is_in_tabulated_populations(ensemble,prod_species);
+
+        //if this species is already being tabulated, we need to change its num_molecules
+        //and then recompute partial propensities in each of the relations pointed to by its
+        //relation addresses
+        if (found) {
+            //find the population in the ensemble
+            auto pop_it = ensemble.populations.begin();
+            std::advance(pop_it,position);
+
+            update_molecule_count(&(*pop_it),prod_stoich);
+            //                    ^^^ ugly way to get a pointer from an iterator
+        }
+        //if this is a species we are _not_ yet tabulating, add the population to the ensemble
+        else {
+            population_t new_pop;
+            new_pop.species = prod_species;
+            new_pop.num_molecules = prod_stoich;
+            new_pop.tot_propensity = 0;
+            add_population_to_ensemble(ensemble,new_pop);
+        }
+    }
+    for (auto rxtnt_tup : next_rxn.reactants) {
+        auto rxtnt_species = std::get<0>(rxtnt_tup);
+        auto rxtnt_stoich = std::get<1>(rxtnt_tup);
+
+        //the reactant is guaranteed to be in the tabulated population, but we still need its position
+        size_t position;
+        bool found;
+        std::tie(found,position) = is_in_tabulated_populations(ensemble,rxtnt_species);
+        auto pop_it = ensemble.populations.begin();
+        std::advance(pop_it,position);
+        update_molecule_count(&(*pop_it),-1*rxtnt_stoich);
+        //                    ^^^ ugly way to get a pointer from an iterator
+
+        //if this causes the molecule count to go to zero, we need to eliminate the population from the ensemble
+        if (pop_it->num_molecules == 0) {
+            //for all relations, delete any relation addresses that point to them
+            for (auto& rel : pop_it->relations) {
+                rel.relation_address_ptr->owner_population_ptr->relation_addresses.remove(*(rel.relation_address_ptr));
+            }
+
+            //for all relation addresses, delete the relation they point to
+            for (auto& rel_addr : pop_it->relation_addresses) {
+                rel_addr.relation_ptr->owner_population_ptr->relations.remove(*(rel_addr.relation_ptr));
+            }
+
+            //remove this population from the ensemble's list
+            ensemble.populations.erase(pop_it);
+        }
+    }
     rxn_utilities::print_reaction(next_rxn);
+}
+
+void update_molecule_count(population_t* pop, long int delta) {
+    //increment its molecule count
+    pop->num_molecules += delta;
+
+    //need to recompute the partial propensity in each relation that involves the incremented species
+    for (auto& ra : pop->relation_addresses) {
+        //first subtract off the current tot_partial propensity and set it to zero, we are recomputing it
+        ra.relation_ptr->owner_population_ptr->tot_propensity -= ra.relation_ptr->tot_partial_propensity;
+        ra.relation_ptr->tot_partial_propensity = 0;
+
+        //recompute partial_propensity for each reaction wrt its owner
+        for (auto rxn : ra.relation_ptr->reactions) {
+            double new_pp = rxn_utilities::compute_partial_propensity(rxn,pop->num_molecules);
+            ra.relation_ptr->tot_partial_propensity += new_pp;
+        }
+
+        //add back the freshly recomputed tot_partial_propensity and also set the tot_full_propensity to the right value
+        ra.relation_ptr->owner_population_ptr->tot_propensity += ra.relation_ptr->tot_partial_propensity;
+        ra.relation_ptr->owner_population_ptr->tot_full_propensity = 
+                ra.relation_ptr->owner_population_ptr->tot_propensity * ra.relation_ptr->owner_population_ptr->num_molecules;
+    }
+}
+
+//FIXME: could be more efficient if we check a _list_ of species_t all at once
+std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t& ensemble, const species_t& species) {
+    size_t position = 0;
+    for (auto pop : ensemble.populations) {
+        if (species.name == pop.species.name) return std::make_tuple(true,position);
+        position++;
+    }
+    return std::make_tuple(false,position);
 }
 
 ensemble_t initialize_ensemble() {
@@ -129,14 +225,32 @@ ensemble_t initialize_ensemble() {
     //ensembles always start with the void population
     add_population_to_ensemble(ensemble,pop_utilities::make_void_population());
 
-    for (auto elem : ensemble.populations) {
-        pop_utilities::print_population(elem);
-    }
-
     return ensemble;
 }
 
+Json::Value initialize_json() {
+    Json::Value root;
+    Json::Value time_list(Json::arrayValue);
+    root["epdm"] = time_list;
+    return root;
+}
+
+void dump_json(const Json::Value& json, const std::string& fname) {
+    std::ofstream fout(fname);
+    fout << json;
+}
+
 int main() {
+    auto json = initialize_json();
     auto ensemble = initialize_ensemble();
-    take_timestep(ensemble);
+    long int nsteps = 15;
+
+    ensemble_utilities::print_ensemble(ensemble);
+    for (int i = 0; i < nsteps; i++) {
+        take_timestep(ensemble);
+        ensemble_utilities::print_ensemble(ensemble);
+        json["epdm"].append(ensemble_utilities::serialize_to_json(ensemble));
+    }
+
+    dump_json(json,"out.json");
 }

@@ -1,6 +1,7 @@
 #include "types.hpp"
 #include <iostream>
 #include <tuple>
+#include <json/json.h>
 
 namespace species_utilities {
 	species_t make_void_species() {
@@ -20,6 +21,12 @@ namespace species_utilities {
 	    p_species.name = "P";
 	    return p_species;
 	}	
+
+	species_t make_arbitrary_species(std::string name) {
+		species_t new_species;
+		new_species.name = name;
+		return new_species;
+	}
 }
 
 namespace pop_utilities {
@@ -31,6 +38,7 @@ namespace pop_utilities {
 	    population_t void_pop;
 	    void_pop.species = void_species;
 	    void_pop.num_molecules = 1;
+	    void_pop.tot_propensity = 0;
 
 	    return void_pop;
 	}
@@ -38,6 +46,31 @@ namespace pop_utilities {
 	void print_population(const population_t& in){
 		std::cout << "Population {" << in.species.name << "}"<< std::endl;
 		std::cout << "\tn = " << in.num_molecules << std::endl;
+	}
+}
+
+namespace ensemble_utilities {
+	void print_ensemble(const ensemble_t& in) {
+		std::cout << "time = " << in.current_time << std::endl;
+	    for (auto pop : in.populations) {
+	    	std::cout << "\t " << pop.species.name << ": " << pop.num_molecules << std::endl;
+	    }
+	}
+
+	Json::Value serialize_to_json(const ensemble_t& in) {
+		Json::Value out;
+		Json::Value pop_vec(Json::arrayValue);
+
+		for (auto pop : in.populations) {
+			Json::Value entry;
+			entry["species_name"] = pop.species.name;
+			entry["num_molecules"] = Json::Int64(pop.num_molecules);
+			pop_vec.append(entry);
+		}
+
+		out["current_time"] = in.current_time;
+		out["populations"] = pop_vec;
+		return out;
 	}
 }
 
@@ -60,11 +93,49 @@ namespace rxn_utilities {
 	    return new_reaction;
 	}
 
-	std::list<reaction_t> get_reactions_for_species_pair(const population_t p1, const population_t p2) {
+	reaction_t decay_rxn(const species_t decay_species) {
+		reaction_t new_reaction;
+
+		new_reaction.rate_constant = constants::delta;
+	    new_reaction.partial_propensity = constants::delta;
+
+	    //add in products and reactants with stoichiometries
+	    std::list<std::tuple<species_t, long int>> reactants, products;
+	    reactants.push_back(std::make_tuple(species_utilities::make_void_species(),0));
+	    reactants.push_back(std::make_tuple(decay_species,1));
+	    products.push_back(std::make_tuple(species_utilities::make_void_species(),0));
+	    new_reaction.reactants = reactants;
+	    new_reaction.products = products;
+
+	    return new_reaction;
+	}
+
+	double compute_partial_propensity(const reaction_t& reaction, long int num_molecules) {
+		auto first_rxtnt_it = reaction.reactants.begin();
+		auto second_rxtnt_it = std::next(first_rxtnt_it,1);
+
+		auto first_rxtnt_name = std::get<0>(*first_rxtnt_it).name;
+		auto second_rxtnt_name = std::get<0>(*second_rxtnt_it).name;
+
+		if ((first_rxtnt_name == std::string("void")) || (second_rxtnt_name == std::string("void"))) {
+			//this is either unimolecular or a source reaction. either way, pp = rate constant
+			return reaction.rate_constant;
+		} else if (first_rxtnt_name == second_rxtnt_name) {
+			//homogenous bimolecular reaction
+			return reaction.rate_constant*(num_molecules-1)*0.5;
+		} else {
+			//heterogeneous bimolecular reaction
+			return reaction.rate_constant*num_molecules;
+		}
+	}
+
+	std::list<reaction_t> get_reactions_for_species_pair(const population_t& p1, const population_t& p2) {
 	    std::list<reaction_t> rxn_list;
 	    if ((p1.species.name == "void") && (p2.species.name == "void")) {
 	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_h_species()));
 	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_p_species()));
+	    } else if ((p1.species.name == "void") && (p2.species.name == "P" || p2.species.name == "H")) {
+	    	rxn_list.push_back(rxn_utilities::decay_rxn(species_utilities::make_arbitrary_species(p2.species.name)));
 	    }
 	    return rxn_list;
 	}

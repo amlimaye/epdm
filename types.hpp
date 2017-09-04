@@ -26,6 +26,7 @@ typedef struct relation_t {
     double                  tot_partial_propensity;                     //sum reaction.partial_propensity over all reactions
     population_t*           owner_population_ptr;                       //pointer to the population that "owns" this relation
     relation_address_t*     relation_address_ptr;                       //pointer to the relation address pointing to this relation, which will be held by the other species in this relation
+
 } relation_t;
 
 typedef struct relation_address_t {
@@ -38,7 +39,6 @@ typedef struct population_t {
     long int                        num_molecules;                      //total number of molecules of this population currently present
     double                          tot_propensity;                     //sum_i pp_i for all relations owned by this population
     double                          tot_full_propensity;                //n_i * (sum_i pp_i), where n_i is the number of species in this population
-    std::list<double>               tot_partial_propensities;           //[pp_1, ...] for all relations owned by this population
     std::list<relation_t>           relations;                          //list of relations owned by this population
     std::list<relation_address_t>   relation_addresses;                 //list of relation_addresses owned by other populations, but pointing to this population
 } population_t;
@@ -49,5 +49,13 @@ typedef struct ensemble_t {
     std::list<population_t>     populations;
     std::default_random_engine  generator;
 } ensemble_t;
+
+bool operator==(const relation_address_t& x, const relation_address_t& y) {
+    return (x.relation_ptr->owner_population_ptr->species.name == y.relation_ptr->owner_population_ptr->species.name);
+}
+
+bool operator==(const relation_t& x, const relation_t& y) {
+    return (x.owner_population_ptr->species.name == y.owner_population_ptr->species.name);
+}
 
 #endif
