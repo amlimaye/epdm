@@ -55,7 +55,7 @@ bool operator==(const relation_address_t& x, const relation_address_t& y) {
 }
 
 bool operator==(const relation_t& x, const relation_t& y) {
-    return (x.owner_population_ptr->species.name == y.owner_population_ptr->species.name);
+    return (x.relation_address_ptr->owner_population_ptr->species.name == y.relation_address_ptr->owner_population_ptr->species.name);
 }
 
 #endif

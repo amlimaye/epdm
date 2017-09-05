@@ -12,13 +12,13 @@
 std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t&, const species_t&);
 void update_molecule_count(population_t*, long int);
 
-void add_population_to_ensemble(ensemble_t& ensemble, population_t population) {
+void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
     //add the population to the ensemble
-    ensemble.populations.push_back(population);
+    ensemble->populations.push_back(population);
 
     //make tuples representing all _new_ bimolecular reactions with this species
     std::list<std::tuple<population_t*, population_t*>> all_pairs;
-    for (auto& pop : ensemble.populations) {
+    for (auto& pop : ensemble->populations) {
         /*
             this caused me a few minutes of grief, so leaving a detailed comment.
             std::make_tuple makes tuples of values by default 
@@ -27,7 +27,7 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t population) {
             fiddle with the members of the population_t struct inside the for loop.
             one forces creation of a tuple of _references_ with std::ref()
         */
-        all_pairs.push_back(pop,ensemble.populations.back());
+        all_pairs.push_back(std::forward_as_tuple(&pop,&(ensemble->populations.back())));
     }
 
     //create relations for each pair
@@ -40,40 +40,44 @@ void add_population_to_ensemble(ensemble_t& ensemble, population_t population) {
             compatibility
         */
 
-        population_t& first_elem = std::get<0>(pair);
-        population_t& second_elem = std::get<1>(pair);
+        population_t* first_elem = std::get<0>(pair);
+        population_t* second_elem = std::get<1>(pair);
 
         //make a relation_t object held by the _first_ member of the pair
         relation_t new_relation;
-        new_relation.owner_population_ptr = &std::get<0>(pair);
+        new_relation.owner_population_ptr = first_elem;
 
         //add reactions for this species pair
-        new_relation.reactions = rxn_utilities::get_reactions_for_species_pair(std::get<0>(pair),std::get<1>(pair));
-        new_relation.tot_partial_propensity = 0.0;
+        new_relation.reactions = rxn_utilities::get_reactions_for_species_pair(*first_elem,*second_elem);
+        if (new_relation.reactions.size() != 0) {
+            new_relation.tot_partial_propensity = 0.0;
 
-        //set the total partial propensity for this relation
-        for (auto rxn : new_relation.reactions) {
-            new_relation.tot_partial_propensity += rxn.partial_propensity;
+            //set the total partial propensity for this relation
+            for (auto rxn : new_relation.reactions) {
+                new_relation.tot_partial_propensity += rxn.partial_propensity;
+            }
+
+            //put them in the right places
+            first_elem->relations.push_back(new_relation);
+
+            //make a relation_address_t held by the _second_ member of the pair
+            relation_address_t new_relation_address;
+            new_relation_address.owner_population_ptr = second_elem;
+            new_relation_address.relation_ptr = &(first_elem->relations.back());
+
+            second_elem->relation_addresses.push_back(new_relation_address);
+            first_elem->relations.back().relation_address_ptr = &(second_elem->relation_addresses.back());
+
+            //update the propensities of p1
+            first_elem->tot_propensity += new_relation.tot_partial_propensity;
+            first_elem->tot_full_propensity = (first_elem->tot_propensity)*(first_elem->num_molecules);
         }
-
-        //make a relation_address_t held by the _second_ member of the pair
-        relation_address_t new_relation_address;
-        new_relation_address.owner_population_ptr = &std::get<1>(pair);
-        new_relation_address.relation_ptr = &new_relation;
-
-        //put them in the right places
-        std::get<0>(pair).relations.push_back(new_relation);
-        std::get<1>(pair).relation_addresses.push_back(new_relation_address);
-
-        //update the propensities of p1
-        std::get<0>(pair).tot_propensity += new_relation.tot_partial_propensity;
-        std::get<0>(pair).tot_full_propensity = std::get<0>(pair).tot_propensity*std::get<0>(pair).num_molecules;
     }
 
     //update the total propensity of the ensemble
-    ensemble.total_propensity = 0.0;
-    for (auto pop : ensemble.populations) {
-        ensemble.total_propensity += pop.tot_full_propensity;
+    ensemble->total_propensity = 0.0;
+    for (auto pop : ensemble->populations) {
+        ensemble->total_propensity += pop.tot_full_propensity;
     }
 }
 
@@ -121,6 +125,7 @@ void take_timestep(ensemble_t& ensemble) {
     double next_time = (1.0/ensemble.total_propensity)*std::log((1.0/r1));
     ensemble.current_time += next_time;
     auto next_rxn = sample_reaction(ensemble,r2);
+    rxn_utilities::print_reaction(next_rxn);
 
     //loop through each of the products
     for (auto prod_tup : next_rxn.products) {
@@ -148,7 +153,7 @@ void take_timestep(ensemble_t& ensemble) {
             new_pop.species = prod_species;
             new_pop.num_molecules = prod_stoich;
             new_pop.tot_propensity = 0;
-            add_population_to_ensemble(ensemble,new_pop);
+            add_population_to_ensemble(&ensemble,new_pop);
         }
     }
     for (auto rxtnt_tup : next_rxn.reactants) {
@@ -180,7 +185,6 @@ void take_timestep(ensemble_t& ensemble) {
             ensemble.populations.erase(pop_it);
         }
     }
-    rxn_utilities::print_reaction(next_rxn);
 }
 
 void update_molecule_count(population_t* pop, long int delta) {
@@ -223,7 +227,7 @@ ensemble_t initialize_ensemble() {
     ensemble.total_propensity = 0.0;
 
     //ensembles always start with the void population
-    add_population_to_ensemble(ensemble,pop_utilities::make_void_population());
+    add_population_to_ensemble(&ensemble,pop_utilities::make_void_population());
 
     return ensemble;
 }
@@ -243,7 +247,7 @@ void dump_json(const Json::Value& json, const std::string& fname) {
 int main() {
     auto json = initialize_json();
     auto ensemble = initialize_ensemble();
-    long int nsteps = 15;
+    long int nsteps = 1000;
 
     ensemble_utilities::print_ensemble(ensemble);
     for (int i = 0; i < nsteps; i++) {
