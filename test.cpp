@@ -81,7 +81,7 @@ void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
     }
 }
 
-const reaction_t& sample_reaction(const ensemble_t& ensemble, double rand) {
+const reaction_t sample_reaction(const ensemble_t& ensemble, double rand) {
     //select a population from the ensemble's list
     auto pop_it = ensemble.populations.begin();
     double s1 = 0;
@@ -111,7 +111,7 @@ const reaction_t& sample_reaction(const ensemble_t& ensemble, double rand) {
     }
     rxn_it = std::prev(rxn_it);
 
-    //return a reference to the chosen reaction
+    //return the chosen reaction
     return *rxn_it;
 }
 
@@ -126,6 +126,7 @@ void take_timestep(ensemble_t& ensemble) {
     ensemble.current_time += next_time;
     auto next_rxn = sample_reaction(ensemble,r2);
     rxn_utilities::print_reaction(next_rxn);
+    std::cout << ensemble.total_propensity << std::endl;
 
     //loop through each of the products
     for (auto prod_tup : next_rxn.products) {
@@ -185,6 +186,17 @@ void take_timestep(ensemble_t& ensemble) {
             ensemble.populations.erase(pop_it);
         }
     }
+
+    //update the total propensity of the ensemble
+    ensemble.total_propensity = 0.0;
+    for (auto& pop : ensemble.populations) {
+        pop.tot_propensity = 0.0;
+        for (auto relation : pop.relations) {
+            pop.tot_propensity += relation.tot_partial_propensity;
+        }
+        ensemble.total_propensity += pop.tot_full_propensity;
+    }
+    std::cout << ensemble.total_propensity << std::endl;
 }
 
 void update_molecule_count(population_t* pop, long int delta) {
@@ -198,8 +210,9 @@ void update_molecule_count(population_t* pop, long int delta) {
         ra.relation_ptr->tot_partial_propensity = 0;
 
         //recompute partial_propensity for each reaction wrt its owner
-        for (auto rxn : ra.relation_ptr->reactions) {
+        for (auto& rxn : ra.relation_ptr->reactions) {
             double new_pp = rxn_utilities::compute_partial_propensity(rxn,pop->num_molecules);
+            rxn.partial_propensity = new_pp;
             ra.relation_ptr->tot_partial_propensity += new_pp;
         }
 
@@ -247,9 +260,9 @@ void dump_json(const Json::Value& json, const std::string& fname) {
 int main() {
     auto json = initialize_json();
     auto ensemble = initialize_ensemble();
-    long int nsteps = 1000;
+    long int nsteps = 10000;
 
-    ensemble_utilities::print_ensemble(ensemble);
+    //ensemble_utilities::print_ensemble(ensemble);
     for (int i = 0; i < nsteps; i++) {
         take_timestep(ensemble);
         ensemble_utilities::print_ensemble(ensemble);

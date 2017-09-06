@@ -119,7 +119,7 @@ namespace rxn_utilities {
 
 		if ((first_rxtnt_name == std::string("void")) || (second_rxtnt_name == std::string("void"))) {
 			//this is either unimolecular or a source reaction. either way, pp = rate constant
-			return reaction.rate_constant;
+			return reaction.rate_constant*num_molecules;
 		} else if (first_rxtnt_name == second_rxtnt_name) {
 			//homogenous bimolecular reaction
 			return reaction.rate_constant*(num_molecules-1)*0.5;
