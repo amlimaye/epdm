@@ -1,0 +1,9 @@
+#!/bin/sh
+eval "$(garden-exec)"
+
+garden load gcc/6.3.0-03c7/bin
+garden load sconsutils/1.41c7/lib-python
+garden load scons/2.5.1-02c7/bin
+garden load jsoncpp/1.8.0-01c7/lib
+
+scons "$@"
