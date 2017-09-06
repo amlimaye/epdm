@@ -47,7 +47,7 @@ typedef struct ensemble_t {
     double                      current_time;
     double                      total_propensity;
     std::list<population_t>     populations;
-    std::default_random_engine  generator;
+    std::mt19937                generator;
 } ensemble_t;
 
 bool operator==(const relation_address_t& x, const relation_address_t& y) {
