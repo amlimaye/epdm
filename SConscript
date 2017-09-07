@@ -13,7 +13,7 @@ env.Replace(CPPPATH=cpp)
 env.Append(CFLAGS=flg,CXXFLAGS=flg)
 
 #some debug-related flags; libc++11 inlines fcns i'd like to call in the debugger
-env.Append(CXXFLAGS='-g -D_LIBCPP_INLINE_VISIBILITY=\"\" -D\"_LIBCPP_EXTERN_TEMPLATE(...)=\"')
+env.Append(CXXFLAGS='-ggdb -D_LIBCPP_INLINE_VISIBILITY=\"\" -D\"_LIBCPP_EXTERN_TEMPLATE(...)=\"')
 
 #bring in the jsoncpp library
 env.Append(LIBS='jsoncpp')
