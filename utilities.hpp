@@ -110,6 +110,39 @@ namespace rxn_utilities {
 	    return new_reaction;
 	}
 
+	reaction_t dimerization_rxn(const species_t s1, const species_t s2) {
+		reaction_t new_reaction;
+		new_reaction.rate_constant = constants::beta;
+
+		//add in products and reactants with stoichiometries
+	    std::list<std::tuple<species_t, long int>> reactants, products;
+	    reactants.push_back(std::make_tuple(s1,1));
+	    reactants.push_back(std::make_tuple(s2,1));
+	    products.push_back(std::make_tuple(species_utilities::make_arbitrary_species(s1.name + s2.name),1));
+
+	    new_reaction.reactants = reactants;
+	    new_reaction.products = products;
+
+	    return new_reaction;
+	}
+
+	reaction_t splitting_rxn(const species_t s1, size_t position) {
+		reaction_t new_reaction;
+		new_reaction.rate_constant = constants::hyd;
+
+		//add in products and reactants with stoichiometries
+	    std::list<std::tuple<species_t, long int>> reactants, products;
+	    reactants.push_back(std::make_tuple(species_utilities::make_void_species(),0));
+	    reactants.push_back(std::make_tuple(s1,1));
+	    products.push_back(std::make_tuple(species_utilities::make_arbitrary_species(s1.name.substr(0,position+1)),1));
+	    products.push_back(std::make_tuple(species_utilities::make_arbitrary_species(s1.name.substr(position+1)),1));
+
+	    new_reaction.reactants = reactants;
+	    new_reaction.products = products;
+
+	    return new_reaction;
+	}
+
 	double compute_partial_propensity(const reaction_t& reaction, long int num_molecules) {
 		auto first_rxtnt_it = reaction.reactants.begin();
 		auto second_rxtnt_it = std::next(first_rxtnt_it,1);
@@ -131,12 +164,34 @@ namespace rxn_utilities {
 
 	std::list<reaction_t> get_reactions_for_species_pair(const population_t& p1, const population_t& p2) {
 	    std::list<reaction_t> rxn_list;
+
+	    // add: [V + V -> H], [V + V -> P]
 	    if ((p1.species.name == "void") && (p2.species.name == "void")) {
-	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_h_species()));
-	        rxn_list.push_back(rxn_utilities::spawn_rxn(species_utilities::make_p_species()));
-	    } else if ((p1.species.name == "void") && (p2.species.name == "P" || p2.species.name == "H")) {
+	    	auto h_rxn = rxn_utilities::spawn_rxn(species_utilities::make_arbitrary_species("H"));
+	    	auto p_rxn = rxn_utilities::spawn_rxn(species_utilities::make_arbitrary_species("P"));
+
+	        rxn_list.push_back(h_rxn);
+	        rxn_list.push_back(p_rxn);
+	    } 
+
+	    // add: [V + P -> V], [V + H -> V] 
+	    // note, it turns out that the void species will always be the first one here
+	    if ((p1.species.name == "void") && (p2.species.name == "P" || p2.species.name == "H")) {
 	    	rxn_list.push_back(rxn_utilities::decay_rxn(species_utilities::make_arbitrary_species(p2.species.name)));
 	    }
+
+	    // add: polymerization reaction
+	    if ((p1.species.name.length() == 1) && (p2.species.name.length() == 1)) {
+	    	rxn_list.push_back(rxn_utilities::dimerization_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
+	    }
+
+	    // add: splitting reaction(s)
+	    if ((p1.species.name == "void") && ((p2.species.name != "void") && (p2.species.name.length() > 1))) {
+	    	for (int pos = 0; pos < p2.species.name.length()-1; pos++) {
+	    		rxn_list.push_back(rxn_utilities::splitting_rxn(p2.species,pos));
+	    	}
+	    }
+
 	    return rxn_list;
 	}
 
