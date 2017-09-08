@@ -266,22 +266,21 @@ void dump_json(const Json::Value& json, const std::string& fname) {
 
 int main(int argc, char *argv[]) {
     //argument parsing...
+    long int num_steps;
     uint32_t rand_seed;
-    if (argc == 1) {
-        rand_seed = 0;
-    } else if (argc == 2) {
-        rand_seed = atoi(argv[1]);
+    if (argc == 3) {
+        num_steps = atol(argv[1]);
+        rand_seed = atoi(argv[2]);
     } else {
-        std::cout << "usage: " << argv[0] << " <rand_seed>" << std::endl;
+        std::cout << "usage: " << argv[0] << " <num_steps> <rand_seed>" << std::endl;
         exit(1);
     }
 
     auto json = initialize_json();
     auto ensemble = initialize_ensemble(rand_seed);
-    long int nsteps = 10000;
 
     //ensemble_utilities::print_ensemble(ensemble);
-    for (int i = 0; i < nsteps; i++) {
+    for (int i = 0; i < num_steps; i++) {
         take_timestep(ensemble);
         json["epdm"].append(ensemble_utilities::serialize_to_json(ensemble));
 
@@ -289,8 +288,8 @@ int main(int argc, char *argv[]) {
         ensemble_utilities::print_ensemble(ensemble);
         #endif
 
-        if (nsteps % 100 == 0) {
-            std::cout << "step " << i << "/" << nsteps << std::endl;
+        if (i % 100 == 0) {
+            std::cout << "step " << i << "/" << num_steps << std::endl;
         }
     }
 
