@@ -59,17 +59,12 @@ namespace ensemble_utilities {
 
 	Json::Value serialize_to_json(const ensemble_t& in) {
 		Json::Value out;
-		Json::Value pop_vec(Json::arrayValue);
+		out["current_time"] = in.current_time;
 
 		for (auto pop : in.populations) {
-			Json::Value entry;
-			entry["species_name"] = pop.species.name;
-			entry["num_molecules"] = Json::Int64(pop.num_molecules);
-			pop_vec.append(entry);
+			out["populations"][pop.species.name] = Json::Int64(pop.num_molecules);
 		}
 
-		out["current_time"] = in.current_time;
-		out["populations"] = pop_vec;
 		return out;
 	}
 }
