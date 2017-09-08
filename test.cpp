@@ -125,8 +125,11 @@ void take_timestep(ensemble_t& ensemble) {
     double next_time = (1.0/ensemble.total_propensity)*std::log((1.0/r1));
     ensemble.current_time += next_time;
     auto next_rxn = sample_reaction(ensemble,r2);
+
+    #ifdef __DEBUG
     rxn_utilities::print_reaction(next_rxn);
     std::cout << ensemble.total_propensity << std::endl;
+    #endif
 
     //loop through each of the products
     for (auto prod_tup : next_rxn.products) {
@@ -196,7 +199,10 @@ void take_timestep(ensemble_t& ensemble) {
         }
         ensemble.total_propensity += pop.tot_full_propensity;
     }
+
+    #ifdef __DEBUG
     std::cout << ensemble.total_propensity << std::endl;
+    #endif
 }
 
 void update_molecule_count(population_t* pop, long int delta) {
@@ -265,8 +271,15 @@ int main() {
     //ensemble_utilities::print_ensemble(ensemble);
     for (int i = 0; i < nsteps; i++) {
         take_timestep(ensemble);
-        ensemble_utilities::print_ensemble(ensemble);
         json["epdm"].append(ensemble_utilities::serialize_to_json(ensemble));
+
+        #ifdef __DEBUG
+        ensemble_utilities::print_ensemble(ensemble);
+        #endif
+
+        if (nsteps % 100 == 0) {
+            std::cout << "step " << i << "/" << nsteps << std::endl;
+        }
     }
 
     dump_json(json,"out.json");

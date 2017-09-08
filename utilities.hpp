@@ -197,6 +197,9 @@ namespace rxn_utilities {
 	    	for (int pos = 0; pos < p2.species.name.length()-1; pos++) {
 	    		rxn_list.push_back(rxn_utilities::splitting_rxn(p2.species,pos));
 	    	}
+	    	#ifdef __DEBUG
+	    	std::cout << "added " << p2.species.name.length()-1 << " splitting reactions!"<< std::endl;
+	    	#endif
 	    }
 
 	    return rxn_list;

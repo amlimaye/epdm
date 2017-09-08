@@ -12,8 +12,12 @@ for p in env['CPPPATH']:
 env.Replace(CPPPATH=cpp)
 env.Append(CFLAGS=flg,CXXFLAGS=flg)
 
-#some debug-related flags; libc++11 inlines fcns i'd like to call in the debugger
-env.Append(CXXFLAGS='-ggdb -D_LIBCPP_INLINE_VISIBILITY=\"\" -D\"_LIBCPP_EXTERN_TEMPLATE(...)=\"')
+#either compile a debug build or a -O3 build
+debug = ARGUMENTS.get('debug',0)
+if int(debug):
+    env.Append(CXXFLAGS='-ggdb -D_LIBCPP_INLINE_VISIBILITY=\"\" -D\"_LIBCPP_EXTERN_TEMPLATE(...)=\" -D__DEBUG')
+else:
+    env.Append(CXXFLAGS='-O3 -ffast-math')
 
 #bring in the jsoncpp library
 env.Append(LIBS='jsoncpp')
