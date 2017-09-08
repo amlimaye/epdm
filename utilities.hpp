@@ -110,7 +110,7 @@ namespace rxn_utilities {
 	    return new_reaction;
 	}
 
-	reaction_t dimerization_rxn(const species_t s1, const species_t s2) {
+	reaction_t elongation_rxn(const species_t s1, const species_t s2) {
 		reaction_t new_reaction;
 		new_reaction.rate_constant = constants::beta;
 
@@ -181,8 +181,15 @@ namespace rxn_utilities {
 	    }
 
 	    // add: polymerization reaction
-	    if ((p1.species.name.length() == 1) && (p2.species.name.length() == 1)) {
-	    	rxn_list.push_back(rxn_utilities::dimerization_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
+	    if ((p1.species.name.length() == 1) && (p2.species.name.length() >= 1) && (p2.species.name != "void")) {
+	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
+	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p2.species.name),species_utilities::make_arbitrary_species(p1.species.name)));
+	    }
+
+	    // add: polymerization reaction
+		if ((p2.species.name.length() == 1) && (p1.species.name.length() >= 1) && (p1.species.name != "void")) {
+	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
+	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p2.species.name),species_utilities::make_arbitrary_species(p1.species.name)));
 	    }
 
 	    // add: splitting reaction(s)
