@@ -239,11 +239,12 @@ std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t& ensemble, 
     return std::make_tuple(false,position);
 }
 
-ensemble_t initialize_ensemble() {
+ensemble_t initialize_ensemble(const uint32_t seed) {
     //start at time zero with zero propensity
     ensemble_t ensemble;
     ensemble.current_time = 0.0;
     ensemble.total_propensity = 0.0;
+    ensemble.generator.seed(seed);
 
     //ensembles always start with the void population
     add_population_to_ensemble(&ensemble,pop_utilities::make_void_population());
@@ -263,9 +264,20 @@ void dump_json(const Json::Value& json, const std::string& fname) {
     fout << json;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    //argument parsing...
+    uint32_t rand_seed;
+    if (argc == 1) {
+        rand_seed = 0;
+    } else if (argc == 2) {
+        rand_seed = atoi(argv[1]);
+    } else {
+        std::cout << "usage: " << argv[0] << " <rand_seed>" << std::endl;
+        exit(1);
+    }
+
     auto json = initialize_json();
-    auto ensemble = initialize_ensemble();
+    auto ensemble = initialize_ensemble(rand_seed);
     long int nsteps = 10000;
 
     //ensemble_utilities::print_ensemble(ensemble);
