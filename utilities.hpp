@@ -221,13 +221,17 @@ namespace rxn_utilities {
         // add: [V + {seq}_u -> {seq}_f]
         if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.name.length() > 2) && (!p2.species.folded)) {
             rxn_list.push_back(rxn_utilities::folding_rxn(p2.species));
+            #ifdef __DEBUG
             std::cout << "added a folding reaction for " << p2.species.name << std::endl;
+            #endif
         }
 
         // add: [V + {seq}_u -> {seq}_f]
         if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.folded)) {
             rxn_list.push_back(rxn_utilities::unfolding_rxn(p2.species));
+            #ifdef __DEBUG
             std::cout << "added an unfolding reaction for " << p2.species.name << std::endl;
+            #endif
         }
 
 	    // add: polymerization reaction

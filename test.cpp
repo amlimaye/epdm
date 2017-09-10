@@ -291,8 +291,8 @@ int main(int argc, char *argv[]) {
         ensemble_utilities::print_ensemble(ensemble);
         #endif
 
-        if (i % 100 == 0) {
-            std::cout << "step " << i << "/" << num_steps << std::endl;
+        if ((i+1) % 100 == 0) {
+            std::cout << "step " << i+1 << "/" << num_steps << std::endl;
         }
     }
 
