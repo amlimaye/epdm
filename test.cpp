@@ -71,7 +71,9 @@ void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
             //update the propensities of p1
             first_elem->tot_propensity += new_relation.tot_partial_propensity;
             first_elem->tot_full_propensity = (first_elem->tot_propensity)*(first_elem->num_molecules);
-        }
+        }/* else {
+            std::cout << "~~ added no reactions for pair: " << first_elem->species.name << ", " << second_elem->species.name << std::endl;
+        }*/
     }
 
     //update the total propensity of the ensemble
@@ -233,7 +235,8 @@ void update_molecule_count(population_t* pop, long int delta) {
 std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t& ensemble, const species_t& species) {
     size_t position = 0;
     for (auto pop : ensemble.populations) {
-        if (species.name == pop.species.name) return std::make_tuple(true,position);
+        if ((species.name == pop.species.name) && (species.folded == pop.species.folded))
+            return std::make_tuple(true,position);
         position++;
     }
     return std::make_tuple(false,position);

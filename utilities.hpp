@@ -7,24 +7,28 @@ namespace species_utilities {
 	species_t make_void_species() {
 	    species_t void_species;
 	    void_species.name = "void";
+        void_species.folded = false;
 	    return void_species;
 	}
 
 	species_t make_h_species() {
 	    species_t h_species;
 	    h_species.name = "H";
+        h_species.folded = false;
 	    return h_species;
 	}
 
 	species_t make_p_species() {
 	    species_t p_species;
 	    p_species.name = "P";
+        p_species.folded = false;
 	    return p_species;
 	}	
 
 	species_t make_arbitrary_species(std::string name) {
 		species_t new_species;
 		new_species.name = name;
+        new_species.folded = false;
 		return new_species;
 	}
 }
@@ -53,7 +57,10 @@ namespace ensemble_utilities {
 	void print_ensemble(const ensemble_t& in) {
 		std::cout << "time = " << in.current_time << std::endl;
 	    for (auto pop : in.populations) {
-	    	std::cout << "\t " << pop.species.name << ": " << pop.num_molecules << std::endl;
+            if (pop.species.folded)
+	    	    std::cout << "\t " << pop.species.name << "_f" << ": " << pop.num_molecules << std::endl;
+            else
+	    	    std::cout << "\t " << pop.species.name << "_u" << ": " << pop.num_molecules << std::endl;
 	    }
 	}
 
@@ -138,6 +145,42 @@ namespace rxn_utilities {
 	    return new_reaction;
 	}
 
+    reaction_t unfolding_rxn(species_t in) {
+        reaction_t new_reaction;
+		new_reaction.rate_constant = constants::unfold;
+
+		//add in products and reactants with stoichiometries
+	    std::list<std::tuple<species_t, long int>> reactants, products;
+	    reactants.push_back(std::make_tuple(species_utilities::make_void_species(),0));
+	    reactants.push_back(std::make_tuple(in,1));
+
+        in.folded = false;
+        products.push_back(std::make_tuple(in,1));
+
+	    new_reaction.reactants = reactants;
+	    new_reaction.products = products;
+
+	    return new_reaction;
+    } 
+
+    reaction_t folding_rxn(species_t in) {
+        reaction_t new_reaction;
+		new_reaction.rate_constant = constants::fold;
+
+		//add in products and reactants with stoichiometries
+	    std::list<std::tuple<species_t, long int>> reactants, products;
+	    reactants.push_back(std::make_tuple(species_utilities::make_void_species(),0));
+	    reactants.push_back(std::make_tuple(in,1));
+
+        in.folded = true;
+        products.push_back(std::make_tuple(in,1));
+
+	    new_reaction.reactants = reactants;
+	    new_reaction.products = products;
+
+	    return new_reaction;
+    } 
+
 	double compute_partial_propensity(const reaction_t& reaction, long int num_molecules) {
 		auto first_rxtnt_it = reaction.reactants.begin();
 		auto second_rxtnt_it = std::next(first_rxtnt_it,1);
@@ -175,14 +218,26 @@ namespace rxn_utilities {
 	    	rxn_list.push_back(rxn_utilities::decay_rxn(species_utilities::make_arbitrary_species(p2.species.name)));
 	    }
 
+        // add: [V + {seq}_u -> {seq}_f]
+        if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.name.length() > 2) && (!p2.species.folded)) {
+            rxn_list.push_back(rxn_utilities::folding_rxn(p2.species));
+            std::cout << "added a folding reaction for " << p2.species.name << std::endl;
+        }
+
+        // add: [V + {seq}_u -> {seq}_f]
+        if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.folded)) {
+            rxn_list.push_back(rxn_utilities::unfolding_rxn(p2.species));
+            std::cout << "added an unfolding reaction for " << p2.species.name << std::endl;
+        }
+
 	    // add: polymerization reaction
-	    if ((p1.species.name.length() == 1) && (p2.species.name.length() >= 1) && (p2.species.name != "void")) {
+	    if ((p1.species.name.length() == 1) && (p2.species.name.length() >= 1) && (p2.species.name != "void") && (!p2.species.folded)) {
 	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
 	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p2.species.name),species_utilities::make_arbitrary_species(p1.species.name)));
 	    }
 
 	    // add: polymerization reaction
-		if ((p2.species.name.length() == 1) && (p1.species.name.length() >= 1) && (p1.species.name != "void")) {
+		if ((p2.species.name.length() == 1) && (!p2.species.folded) && (p1.species.name.length() >= 1) && (p1.species.name != "void")) {
 	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
 	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p2.species.name),species_utilities::make_arbitrary_species(p1.species.name)));
 	    }
@@ -203,17 +258,30 @@ namespace rxn_utilities {
 	void print_reaction(const reaction_t& in) {
 		auto it = in.reactants.begin();
 		for (int i = 0; i < in.reactants.size()-1; i++) {
-			std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << " + ";
+            if (std::get<0>(*it).folded)
+			    std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << "_f" << " + ";
+            else
+			    std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << "_u" << " + ";
 			std::advance(it,1);
 		}
-
-		std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << " --> ";
+        
+        if (std::get<0>(*it).folded)
+		    std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << "_f" << " --> ";
+        else
+		    std::cout << std::get<1>(*it) << " " << std::get<0>(*it).name << "_u" << " --> ";
 
 		auto it2 = in.products.begin();
 		for (int i = 0; i < in.products.size()-1; i++) {
-			std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << " + ";
+            if (std::get<0>(*it2).folded)
+			    std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << "_f" << " + ";
+            else
+			    std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << "_u" << " + ";
 			std::advance(it2,1);
 		}
-		std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << std::endl;
+
+        if (std::get<0>(*it2).folded)
+		    std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << "_f" << std::endl;
+        else
+		    std::cout << std::get<1>(*it2) << " " << std::get<0>(*it2).name << "_u" << std::endl;
 	}
 }
