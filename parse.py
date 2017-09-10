@@ -1,40 +1,112 @@
-#!/usr/local/bin/python
+#!/usr/bin/env garden-exec
+#{
+#   garden load desres-python/2.7.13-02c7/bin
+#   python -u $0 "$@"
+#}
 
 from __future__ import print_function
 import sys
 import json
 import numpy as np
+import multiprocessing
+import cPickle
+import IPython
 import matplotlib.pyplot as plt
-import seaborn as sns
+import seaborn
 
 def main(sargs):
-	outfile = sargs[0]
-	with open(outfile,'r') as f:
-		data = json.load(f)
+    recompute = False
 
-	data_list = data['epdm']
-	times = np.array([elem['current_time'] for elem in data_list])
+    if recompute:
+        outfile = sargs[0]
+        with open(outfile,'r') as f:
+            data = json.load(f)
+        data_list = data['epdm']
+    
+        ncores = multiprocessing.cpu_count()
+        print('pooling with %d cores' % ncores)
+        pool = multiprocessing.Pool(ncores)
+        parsed = pool.map(parse_one_elem,data_list)
+        pool.close()
 
-	species = [[pop['species_name'] for pop in elem['populations']] for elem in data_list]
-	distinct_species = set(sum(species,[])) - set(['void'])
-	print(distinct_species)
+        times,full_species_map = collate_all_elements(parsed)
+        species_statistics = get_species_statistics(times,full_species_map)
+        cache_these = dict(times=times,full_species_map=full_species_map,species_statistics=species_statistics)
+        make_cache(cache_these)    
 
-	species_map = {s:[] for s in distinct_species}
+    else:
+        cache = load_cache()
+        times,full_species_map,species_statisics = cache['times'],cache['full_species_map'],cache['species_statistics']
 
-	for elem in data_list:
-		pops = {pop['species_name']:pop['num_molecules'] for pop in elem['populations']}
-		for species in species_map.keys():
-			species_map[species].append(pops.get(species,0))
+    make_plots(species_statistics,full_species_map)
 
-	#the average number of species must be computed with a _time_ average!
-	for k,v in species_map.items():
-		mean_value = (1.0/times[-1])*np.trapz(v,x=times)
-		print('<n_{%s}(t)> = %0.4f' % (k,mean_value))
-		ax = sns.tsplot(data=v,time=times)
-		ax.set_xlabel(r'$t$')
-		ax.set_ylabel(r'$n(t)$')
+def make_cache(cache_this,fname='cache.pkl'):
+    with open(fname,'w') as f:
+        cPickle.dump(cache_this,f)
 
-		plt.show()
+def load_cache(fname='cache.pkl'):
+    with open(fname,'r') as f:
+        cache = cPickle.load(f)
+    return cache
+
+def collate_all_elements(parsed):
+    nsteps = len(parsed)
+    times = np.zeros(nsteps)
+
+    full_species_map = {}
+    for idx,p in enumerate(parsed):
+        times[idx] = p[0]
+        for species in p[1].keys():
+            if species not in full_species_map.keys():
+                full_species_map[species] = {}
+                full_species_map[species]['num'] = np.zeros(nsteps)
+                full_species_map[species]['frac'] = np.zeros(nsteps)
+
+            full_species_map[species]['num'][idx] = p[1][species]['num']
+            full_species_map[species]['frac'][idx] = p[1][species]['frac']
+
+        if idx % 1000 == 0:
+            print('packed record %d/%d' % (idx,nsteps))
+
+    return times,full_species_map
+
+def get_species_statistics(times,full_species_map):
+    species_statistics = {}
+
+    for k,v in full_species_map.items():
+        inv_time = (1.0/times[-1])
+        mean_value = inv_time*np.trapz(v['num'],x=times)
+        mean_fraction = inv_time*np.trapz(v['frac'],x=times)
+        species_statistics[k] = (mean_value,mean_fraction)
+
+    return species_statistics
+
+def make_plots(species_statistics,full_species_map):
+    population_vs_nresidues = np.zeros(max([len(species) for species in full_species_map.keys()]))
+    for species,(pop,frac) in species_statistics.items():
+        population_vs_nresidues[len(species)-1] += frac
+
+    max_length = population_vs_nresidues.size
+    plt.figure()
+    plt.plot(np.arange(1,max_length+1),np.log(population_vs_nresidues),'o-')
+    plt.xlabel(r'$n$')
+    plt.ylabel(r'$\log\,\,\mathrm{Pr}(N_{\mathrm{residues}} = n)$')
+    plt.savefig('flory_distribution.png')
+
+def parse_one_elem(elem):
+    species_map = {}
+    time = elem['current_time']
+
+    for species,pop_num in elem['populations'].items():
+        species_map[species] = {}
+        species_map[species]['num'] = pop_num
+    
+    tot_num_species = np.sum([species_map[species]['num'] for species in species_map.keys()])
+
+    for species in elem['populations'].keys():
+        species_map[species]['frac'] = float(species_map[species]['num'])/float(tot_num_species)
+
+    return time,species_map
 
 if __name__ == '__main__':
-	main(sys.argv[1:])
+    main(sys.argv[1:])
