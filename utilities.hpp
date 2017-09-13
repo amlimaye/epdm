@@ -218,6 +218,7 @@ namespace rxn_utilities {
 	    	rxn_list.push_back(rxn_utilities::decay_rxn(species_utilities::make_arbitrary_species(p2.species.name)));
 	    }
 
+	    #ifdef __INCLUDE_FOLDING
         // add: [V + {seq}_u -> {seq}_f]
         if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.name.length() > 2) && (!p2.species.folded)) {
             rxn_list.push_back(rxn_utilities::folding_rxn(p2.species));
@@ -226,13 +227,14 @@ namespace rxn_utilities {
             #endif
         }
 
-        // add: [V + {seq}_u -> {seq}_f]
+        // add: [V + {seq}_f -> {seq}_u]
         if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.folded)) {
             rxn_list.push_back(rxn_utilities::unfolding_rxn(p2.species));
             #ifdef __DEBUG
             std::cout << "added an unfolding reaction for " << p2.species.name << std::endl;
             #endif
         }
+        #endif
 
 	    // add: polymerization reaction
 	    if ((p1.species.name.length() == 1) && (p2.species.name.length() >= 1) && (p2.species.name != "void") && (!p2.species.folded)) {
