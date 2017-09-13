@@ -241,7 +241,7 @@ namespace rxn_utilities {
 	    }
 
 	    // add: polymerization reaction
-		if ((p2.species.name.length() == 1) && (!p2.species.folded) && (p1.species.name.length() >= 1) && (p1.species.name != "void")) {
+		if ((p2.species.name.length() == 1) && (!p1.species.folded) && (p1.species.name.length() >= 1) && (p1.species.name != "void")) {
 	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p1.species.name),species_utilities::make_arbitrary_species(p2.species.name)));
 	    	rxn_list.push_back(rxn_utilities::elongation_rxn(species_utilities::make_arbitrary_species(p2.species.name),species_utilities::make_arbitrary_species(p1.species.name)));
 	    }
