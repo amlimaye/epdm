@@ -264,7 +264,7 @@ namespace rxn_utilities {
 	    }
 
 	    // add: splitting reaction(s)
-	    if ((p1.species.name == "void") && ((p2.species.name != "void") && (p2.species.name.length() > 1))) {
+	    if ((p1.species.name == "void") && ((p2.species.name != "void") && (p2.species.name.length() > 1) && !(p2.species.folded))) {
 	    	for (int pos = 0; pos < p2.species.name.length()-1; pos++) {
 	    		rxn_list.push_back(rxn_utilities::splitting_rxn(p2.species,pos));
 	    	}
