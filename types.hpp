@@ -13,6 +13,8 @@ struct relation_address_t;
 typedef struct species_t {
     std::string name;
     bool folded;
+    bool foldable;
+    int native_contacts;
 } species_t;
 
 typedef struct reaction_t {

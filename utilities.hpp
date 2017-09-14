@@ -8,6 +8,7 @@ namespace species_utilities {
 	    species_t void_species;
 	    void_species.name = "void";
         void_species.folded = false;
+        void_species.foldable = false;
 	    return void_species;
 	}
 
@@ -15,6 +16,7 @@ namespace species_utilities {
 	    species_t h_species;
 	    h_species.name = "H";
         h_species.folded = false;
+        h_species.foldable = false;
 	    return h_species;
 	}
 
@@ -22,6 +24,7 @@ namespace species_utilities {
 	    species_t p_species;
 	    p_species.name = "P";
         p_species.folded = false;
+        p_species.foldable = false;
 	    return p_species;
 	}	
 
@@ -29,6 +32,7 @@ namespace species_utilities {
 		species_t new_species;
 		new_species.name = name;
         new_species.folded = false;
+        new_species.foldable = false;
 		return new_species;
 	}
 }
@@ -69,7 +73,10 @@ namespace ensemble_utilities {
 		out["current_time"] = in.current_time;
 
 		for (auto pop : in.populations) {
-			out["populations"][pop.species.name] = Json::Int64(pop.num_molecules);
+			if (pop.species.folded)
+				out["populations"][pop.species.name + "_f"] = Json::Int64(pop.num_molecules);
+			else
+				out["populations"][pop.species.name + "_u"] = Json::Int64(pop.num_molecules);
 		}
 
 		return out;
@@ -147,7 +154,8 @@ namespace rxn_utilities {
 
     reaction_t unfolding_rxn(species_t in) {
         reaction_t new_reaction;
-		new_reaction.rate_constant = constants::unfold;
+
+		new_reaction.rate_constant = exp(12 - 0.1*sqrt(in.name.length()) - (0.5*in.name.length() + 1.34));
 
 		//add in products and reactants with stoichiometries
 	    std::list<std::tuple<species_t, long int>> reactants, products;
@@ -163,9 +171,14 @@ namespace rxn_utilities {
 	    return new_reaction;
     } 
 
-    reaction_t folding_rxn(species_t in) {
+    reaction_t folding_rxn(species_t in, int num_contacts) {
         reaction_t new_reaction;
-		new_reaction.rate_constant = constants::fold;
+		
+		double ku = exp(12 - 0.1*sqrt(in.name.length()) - 2*(0.5*in.name.length() + 1.34));
+        double dg = 2*num_contacts - in.name.length()*0.182 ;
+		new_reaction.rate_constant = ku*exp(dg);
+		std::cout << ku << std::endl;
+		std::cout << new_reaction.rate_constant << std::endl;
 
 		//add in products and reactants with stoichiometries
 	    std::list<std::tuple<species_t, long int>> reactants, products;
@@ -220,8 +233,8 @@ namespace rxn_utilities {
 
 	    #ifdef __INCLUDE_FOLDING
         // add: [V + {seq}_u -> {seq}_f]
-        if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.name.length() > 2) && (!p2.species.folded)) {
-            rxn_list.push_back(rxn_utilities::folding_rxn(p2.species));
+        if ((p1.species.name == "void") && (p2.species.name != "void") && (p2.species.name.length() > 2) && (!p2.species.folded) && (p2.species.foldable)) {
+            rxn_list.push_back(rxn_utilities::folding_rxn(p2.species,p2.species.native_contacts));
             #ifdef __DEBUG
             std::cout << "added a folding reaction for " << p2.species.name << std::endl;
             #endif
