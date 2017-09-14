@@ -177,8 +177,10 @@ namespace rxn_utilities {
 		double ku = exp(12 - 0.1*sqrt(in.name.length()) - 2*(0.5*in.name.length() + 1.34));
         double dg = 2*num_contacts - in.name.length()*0.182 ;
 		new_reaction.rate_constant = ku*exp(dg);
+		#ifdef __DEBUG
 		std::cout << ku << std::endl;
 		std::cout << new_reaction.rate_constant << std::endl;
+		#endif
 
 		//add in products and reactants with stoichiometries
 	    std::list<std::tuple<species_t, long int>> reactants, products;

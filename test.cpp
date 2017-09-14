@@ -78,6 +78,7 @@ std::tuple<bool,int,int> is_foldable(const std::string name) {
 }
 
 void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
+    #ifdef __INCLUDE_FOLDING
     //determine whether or not this sequence is foldable
     bool foldable = false;
     int contacts = 0;
@@ -86,12 +87,17 @@ void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
         std::tie(foldable,contacts,max_count) = is_foldable(population.species.name);
 
     if (foldable) {
+        #ifdef __DEBUG
         std::cout << "sequence " << population.species.name << " is foldable with " << contacts << " hydrophobic contacts, multiplicity " << max_count << "!" << std::endl;
+        #endif
         population.species.foldable = true;
         population.species.native_contacts = contacts;
     } else {
+        #ifdef __DEBUG
         std::cout << "sequence " << population.species.name << " is not foldable with " << contacts << " hydrophobic contacts, multiplicity " << max_count << "!" << std::endl;
+        #endif
     }
+    #endif
 
     //add the population to the ensemble
     ensemble->populations.push_back(population);
