@@ -20,6 +20,7 @@ namespace ensemble_utilities {
 
 	//function to print out ensemble to std::cout
 	void print_ensemble(const ensemble_t& in);
+	std::ostream& operator<<(std::ostream& stream, const ensemble_t& in);
 
 	//function to serialize ensemble to a Json object
 	Json::Value serialize_to_json(const ensemble_t& in);

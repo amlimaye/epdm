@@ -241,6 +241,18 @@ void ensemble_utilities::print_ensemble(const ensemble_t& in) {
     }
 }
 
+std::ostream& operator<<(std::ostream& stream, const ensemble_t& in) {
+    stream << "time = " << in.current_time << std::endl;
+    for (auto pop : in.populations) {
+        if (pop.species.folded)
+            stream << "\t " << pop.species.name << "_f" << ": " << pop.num_molecules 
+            << std::endl;
+        else
+            stream << "\t " << pop.species.name << "_u" << ": " << pop.num_molecules 
+            << std::endl;
+    } 
+}
+
 Json::Value ensemble_utilities::serialize_to_json(const ensemble_t& in) {
 	Json::Value out;
 	out["current_time"] = in.current_time;

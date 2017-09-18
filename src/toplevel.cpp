@@ -6,9 +6,6 @@
 #include "../include/ensemble_utilities.hpp"
 
 #include <iostream>
-#include <numeric>
-#include <random>
-#include <cmath>
 #include <fstream>
 #include <json/json.h>
 
@@ -28,30 +25,32 @@ int main(int argc, char *argv[]) {
     //argument parsing...
     long int num_steps;
     uint32_t rand_seed;
-    if (argc == 3) {
+    std::string outfile_path;
+    if (argc == 4) {
         num_steps = atol(argv[1]);
         rand_seed = atoi(argv[2]);
+        outfile_path = std::string(argv[3]);
     } else {
-        std::cout << "usage: " << argv[0] << " <num_steps> <rand_seed>" << std::endl;
+        std::cout << "usage: " << argv[0] << " <num_steps> <rand_seed> <outfile_path>" << std::endl;
         exit(1);
     }
 
     auto json = initialize_json();
     auto ensemble = ensemble_utilities::initialize_ensemble(rand_seed);
 
-    //ensemble_utilities::print_ensemble(ensemble);
     for (int i = 0; i < num_steps; i++) {
         ensemble_utilities::take_timestep(ensemble);
         json["epdm"].append(ensemble_utilities::serialize_to_json(ensemble));
 
         #ifdef __DEBUG
-        ensemble_utilities::print_ensemble(ensemble);
+        std::cout << ensemble;
         #endif
 
+        //print out step number every 100 steps
         if ((i+1) % 100 == 0) {
             std::cout << "step " << i+1 << "/" << num_steps << std::endl;
         }
     }
 
-    dump_json(json,"out.json");
+    dump_json(json,outfile_path);
 }
