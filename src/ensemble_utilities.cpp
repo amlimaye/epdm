@@ -1,90 +1,30 @@
-#include "types.hpp"
-#include "constants.hpp"
-#include "utilities.hpp"
 #include <iostream>
-#include <numeric>
 #include <random>
-#include <cmath>
-#include <string>
-#include <fstream>
-#include <json/json.h>
+#include "../include/pop_utilities.hpp"
+#include "../include/rxn_utilities.hpp"
+#include "../include/ensemble_utilities.hpp"
 
-//forward-declare
-std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t&, const species_t&);
-void update_molecule_count(population_t*, long int);
+ensemble_t ensemble_utilities::initialize_ensemble(const uint32_t seed) {
+    //start at time zero with zero propensity
+    ensemble_t ensemble;
+    ensemble.current_time = 0.0;
+    ensemble.total_propensity = 0.0;
+    ensemble.generator.seed(seed);
 
-std::tuple<bool,int,int> is_foldable(const std::string name) {
-    //check some dumb things
-    if (name.length() < 4)
-        return std::make_tuple(false,0,0);
-    if (name == "void")
-        return std::make_tuple(false,0,0);
+    //ensembles always start with the void population
+    add_population_to_ensemble(&ensemble,pop_utilities::make_void_population());
 
-    //load up the contacts JSON file
-    std::string fname = "/u/nyc/limaye/scratch/epdm/contacts/contacts_" + std::to_string(name.length()) + ".json";
-    #ifdef __DEBUG
-    std::cout << fname << std::endl;
-    #endif
-    std::ifstream fin(fname);
-    Json::Value root;
-    fin >> root;
-
-    //find the hydrophobic indices in _this_ sequence
-    std::vector<int> hyd_indices;
-    for (size_t i = 0; i < name.length(); i++) {
-        if (name.at(i) == 'H')
-            hyd_indices.push_back(i);
-    }
-
-    //bookkeeping variables
-    int max_count = 0;
-    int max_contacts = 0;
-
-    //iterate through each configuration in the JSON
-    for (auto& elem : root) {
-        int contacts = 0;
-
-        //iterate through the hydrophobic indices in each sequence
-        for (auto hyd_idx : hyd_indices) {
-            auto this_elem = elem[hyd_idx];
-
-            //iterate through the neighbors of this index at which there is an H residue in the reference sequence
-            for (auto neigh_idx : this_elem) {
-
-                //add a contact if this sequence has an H residue at that neighbor position
-                if (name.at(neigh_idx.asInt()) == 'H')
-                    contacts += 1;
-            }
-        }
-
-        //if we found a new max, set it and set its count to zero
-        if (contacts > max_contacts) {
-            max_count = 0;
-            max_contacts = contacts;
-        }
-
-        //if we found a sequence with just as many contacts up the counter
-        if (contacts == max_contacts) {
-            max_count += 1;
-        }
-    }
-
-    //foldable if it has at least one contact and has a unique native structure
-    if ((max_count == 1) && (max_contacts > 1))
-        return std::make_tuple(true,max_contacts,max_count);
-
-    //else it's not foldable
-    return std::make_tuple(false,max_contacts,max_count);
+    return ensemble;	
 }
 
-void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
+void ensemble_utilities::add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
     #ifdef __INCLUDE_FOLDING
     //determine whether or not this sequence is foldable
     bool foldable = false;
     int contacts = 0;
     int max_count = 0;
     if (!(population.species.name.length() > 13))
-        std::tie(foldable,contacts,max_count) = is_foldable(population.species.name);
+        std::tie(foldable,contacts,max_count) = folding::is_foldable(population.species.name);
 
     if (foldable) {
         #ifdef __DEBUG
@@ -105,27 +45,11 @@ void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
     //make tuples representing all _new_ bimolecular reactions with this species
     std::list<std::tuple<population_t*, population_t*>> all_pairs;
     for (auto& pop : ensemble->populations) {
-        /*
-            this caused me a few minutes of grief, so leaving a detailed comment.
-            std::make_tuple makes tuples of values by default 
-                (https://stackoverflow.com/questions/19054347)
-            here, we actually want tuples of _references_ since we are going to
-            fiddle with the members of the population_t struct inside the for loop.
-            one forces creation of a tuple of _references_ with std::ref()
-        */
         all_pairs.push_back(std::forward_as_tuple(&pop,&(ensemble->populations.back())));
     }
 
     //create relations for each pair
     for (auto& pair : all_pairs) {
-        /*
-            another few minutes of grief here.
-            the std::get<>() in this function is out of control. AFAICT there isn't
-            a way to unpack _references_ from a tuple in C++11. Structured bindings in
-            C++17 solve this issue, but I chose not to use that to maintain C++11
-            compatibility
-        */
-
         population_t* first_elem = std::get<0>(pair);
         population_t* second_elem = std::get<1>(pair);
 
@@ -169,7 +93,7 @@ void add_population_to_ensemble(ensemble_t* ensemble, population_t population) {
     }
 }
 
-const reaction_t sample_reaction(const ensemble_t& ensemble, double rand) {
+const reaction_t ensemble_utilities::sample_reaction(const ensemble_t& ensemble, double rand) {
     //select a population from the ensemble's list
     auto pop_it = ensemble.populations.begin();
     double s1 = 0;
@@ -203,7 +127,19 @@ const reaction_t sample_reaction(const ensemble_t& ensemble, double rand) {
     return *rxn_it;
 }
 
-void take_timestep(ensemble_t& ensemble) {
+std::tuple<bool,size_t> 
+ensemble_utilities::is_in_tabulated_populations(const ensemble_t& ensemble, 
+												const species_t& species) {
+    size_t position = 0;
+    for (auto pop : ensemble.populations) {
+        if ((species.name == pop.species.name) && (species.folded == pop.species.folded))
+            return std::make_tuple(true,position);
+        position++;
+    }
+    return std::make_tuple(false,position);
+}
+
+void ensemble_utilities::take_timestep(ensemble_t& ensemble) {
     //get two random numbers from the real uniform distribution over [0,1)
     std::uniform_real_distribution<double> distribution(0.0,1.0);
     double r1 = distribution(ensemble.generator);
@@ -226,7 +162,7 @@ void take_timestep(ensemble_t& ensemble) {
 
         size_t position;
         bool found;
-        std::tie(found,position) = is_in_tabulated_populations(ensemble,prod_species);
+        std::tie(found,position) = ensemble_utilities::is_in_tabulated_populations(ensemble,prod_species);
 
         //if this species is already being tabulated, we need to change its num_molecules
         //and then recompute partial propensities in each of the relations pointed to by its
@@ -236,7 +172,7 @@ void take_timestep(ensemble_t& ensemble) {
             auto pop_it = ensemble.populations.begin();
             std::advance(pop_it,position);
 
-            update_molecule_count(&(*pop_it),prod_stoich);
+            pop_utilities::update_molecule_count(&(*pop_it),prod_stoich);
             //                    ^^^ ugly way to get a pointer from an iterator
         }
         //if this is a species we are _not_ yet tabulating, add the population to the ensemble
@@ -255,10 +191,10 @@ void take_timestep(ensemble_t& ensemble) {
         //the reactant is guaranteed to be in the tabulated population, but we still need its position
         size_t position;
         bool found;
-        std::tie(found,position) = is_in_tabulated_populations(ensemble,rxtnt_species);
+        std::tie(found,position) = ensemble_utilities::is_in_tabulated_populations(ensemble,rxtnt_species);
         auto pop_it = ensemble.populations.begin();
         std::advance(pop_it,position);
-        update_molecule_count(&(*pop_it),-1*rxtnt_stoich);
+        pop_utilities::update_molecule_count(&(*pop_it),-1*rxtnt_stoich);
         //                    ^^^ ugly way to get a pointer from an iterator
 
         //if this causes the molecule count to go to zero, we need to eliminate the population from the ensemble
@@ -293,94 +229,28 @@ void take_timestep(ensemble_t& ensemble) {
     #endif
 }
 
-void update_molecule_count(population_t* pop, long int delta) {
-    //increment its molecule count
-    pop->num_molecules += delta;
-
-    //need to recompute the partial propensity in each relation that involves the incremented species
-    for (auto& ra : pop->relation_addresses) {
-        //first subtract off the current tot_partial propensity and set it to zero, we are recomputing it
-        ra.relation_ptr->owner_population_ptr->tot_propensity -= ra.relation_ptr->tot_partial_propensity;
-        ra.relation_ptr->tot_partial_propensity = 0;
-
-        //recompute partial_propensity for each reaction wrt its owner
-        for (auto& rxn : ra.relation_ptr->reactions) {
-            double new_pp = rxn_utilities::compute_partial_propensity(rxn,pop->num_molecules);
-            rxn.partial_propensity = new_pp;
-            ra.relation_ptr->tot_partial_propensity += new_pp;
-        }
-
-        //add back the freshly recomputed tot_partial_propensity and also set the tot_full_propensity to the right value
-        ra.relation_ptr->owner_population_ptr->tot_propensity += ra.relation_ptr->tot_partial_propensity;
-        ra.relation_ptr->owner_population_ptr->tot_full_propensity = 
-                ra.relation_ptr->owner_population_ptr->tot_propensity * ra.relation_ptr->owner_population_ptr->num_molecules;
+void ensemble_utilities::print_ensemble(const ensemble_t& in) {
+	std::cout << "time = " << in.current_time << std::endl;
+    for (auto pop : in.populations) {
+        if (pop.species.folded)
+    	    std::cout << "\t " << pop.species.name << "_f" << ": " << pop.num_molecules 
+    		<< std::endl;
+        else
+    	    std::cout << "\t " << pop.species.name << "_u" << ": " << pop.num_molecules 
+    		<< std::endl;
     }
 }
 
-//FIXME: could be more efficient if we check a _list_ of species_t all at once
-std::tuple<bool,size_t> is_in_tabulated_populations(const ensemble_t& ensemble, const species_t& species) {
-    size_t position = 0;
-    for (auto pop : ensemble.populations) {
-        if ((species.name == pop.species.name) && (species.folded == pop.species.folded))
-            return std::make_tuple(true,position);
-        position++;
-    }
-    return std::make_tuple(false,position);
-}
+Json::Value ensemble_utilities::serialize_to_json(const ensemble_t& in) {
+	Json::Value out;
+	out["current_time"] = in.current_time;
 
-ensemble_t initialize_ensemble(const uint32_t seed) {
-    //start at time zero with zero propensity
-    ensemble_t ensemble;
-    ensemble.current_time = 0.0;
-    ensemble.total_propensity = 0.0;
-    ensemble.generator.seed(seed);
+	for (auto pop : in.populations) {
+		if (pop.species.folded)
+			out["populations"][pop.species.name + "_f"] = Json::Int64(pop.num_molecules);
+		else
+			out["populations"][pop.species.name + "_u"] = Json::Int64(pop.num_molecules);
+	}
 
-    //ensembles always start with the void population
-    add_population_to_ensemble(&ensemble,pop_utilities::make_void_population());
-
-    return ensemble;
-}
-
-Json::Value initialize_json() {
-    Json::Value root;
-    Json::Value time_list(Json::arrayValue);
-    root["epdm"] = time_list;
-    return root;
-}
-
-void dump_json(const Json::Value& json, const std::string& fname) {
-    std::ofstream fout(fname);
-    fout << json;
-}
-
-int main(int argc, char *argv[]) {
-    //argument parsing...
-    long int num_steps;
-    uint32_t rand_seed;
-    if (argc == 3) {
-        num_steps = atol(argv[1]);
-        rand_seed = atoi(argv[2]);
-    } else {
-        std::cout << "usage: " << argv[0] << " <num_steps> <rand_seed>" << std::endl;
-        exit(1);
-    }
-
-    auto json = initialize_json();
-    auto ensemble = initialize_ensemble(rand_seed);
-
-    //ensemble_utilities::print_ensemble(ensemble);
-    for (int i = 0; i < num_steps; i++) {
-        take_timestep(ensemble);
-        json["epdm"].append(ensemble_utilities::serialize_to_json(ensemble));
-
-        #ifdef __DEBUG
-        ensemble_utilities::print_ensemble(ensemble);
-        #endif
-
-        if ((i+1) % 100 == 0) {
-            std::cout << "step " << i+1 << "/" << num_steps << std::endl;
-        }
-    }
-
-    dump_json(json,"out.json");
+	return out;
 }

@@ -28,4 +28,11 @@ else:
 
 #bring in the jsoncpp library
 env.Append(LIBS='jsoncpp')
-env.Program('test.cpp')
+
+#construct the executable
+src_files = ['species_utilities.cpp','pop_utilities.cpp',
+             'rxn_utilities.cpp','ensemble_utilities.cpp',
+             'folding.cpp','toplevel.cpp','types.cpp']
+src_files_abspaths = map(lambda x: 'src/' + x, src_files)
+
+env.Program('run_epdm',src_files_abspaths)

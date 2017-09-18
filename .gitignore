@@ -1,0 +1,4 @@
+objs
+contacts
+.mypy_cache
+.sconsign.dblite

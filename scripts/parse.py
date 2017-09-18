@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn
 
 def main(sargs):
-    recompute = False
+    recompute = True
 
     if recompute:
         outfile = sargs[0]
