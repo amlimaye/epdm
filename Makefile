@@ -40,3 +40,4 @@ binary-debug: types folding ensemble_utilities rxn_utilities pop_utilities speci
 
 clean:
 	rm -rf $(BUILD_DIR)/*.o $(BUILD_DIR)/main $(BUILD_DIR)/main.dSYM
+	rm *.pkl *.json
