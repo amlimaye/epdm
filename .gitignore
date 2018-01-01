@@ -1,4 +1,4 @@
-objs
-contacts
-.mypy_cache
-.sconsign.dblite
+*.swp
+*.o
+*.dSYM
+main
