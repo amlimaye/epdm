@@ -1,4 +1,4 @@
-#include "../include/types.hpp"
+#include "types.hpp"
 
 bool operator==(const relation_address_t& x, const relation_address_t& y) {
     return ((x.relation_ptr->owner_population_ptr->species.name == y.relation_ptr->owner_population_ptr->species.name) &&

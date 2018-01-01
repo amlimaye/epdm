@@ -1,9 +1,9 @@
-#include "../include/types.hpp"
-#include "../include/constants.hpp"
-#include "../include/species_utilities.hpp"
-#include "../include/pop_utilities.hpp"
-#include "../include/rxn_utilities.hpp"
-#include "../include/ensemble_utilities.hpp"
+#include "types.hpp"
+#include "constants.hpp"
+#include "species_utilities.hpp"
+#include "pop_utilities.hpp"
+#include "rxn_utilities.hpp"
+#include "ensemble_utilities.hpp"
 
 #include <iostream>
 #include <fstream>

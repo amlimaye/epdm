@@ -1,8 +1,9 @@
 #include <iostream>
 #include <random>
-#include "../include/pop_utilities.hpp"
-#include "../include/rxn_utilities.hpp"
-#include "../include/ensemble_utilities.hpp"
+#include "pop_utilities.hpp"
+#include "rxn_utilities.hpp"
+#include "ensemble_utilities.hpp"
+#include "folding.hpp"
 
 ensemble_t ensemble_utilities::initialize_ensemble(const uint32_t seed) {
     //start at time zero with zero propensity
@@ -251,6 +252,7 @@ std::ostream& operator<<(std::ostream& stream, const ensemble_t& in) {
             stream << "\t " << pop.species.name << "_u" << ": " << pop.num_molecules 
             << std::endl;
     } 
+    return stream;
 }
 
 Json::Value ensemble_utilities::serialize_to_json(const ensemble_t& in) {
