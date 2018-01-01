@@ -1,7 +1,7 @@
 #include <iostream>
-#include "species_utilities.hpp"
-#include "pop_utilities.hpp"
-#include "rxn_utilities.hpp"
+#include "species_utilities.hxx"
+#include "pop_utilities.hxx"
+#include "rxn_utilities.hxx"
 
 population_t pop_utilities::make_void_population() {
     //make the void species first

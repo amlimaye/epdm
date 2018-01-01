@@ -8,34 +8,34 @@ FOLDING_FLAG=-D__INCLUDE_FOLDING
 
 types:
 	g++ -c -o $(BUILD_DIR)/$@.o $(CXXFLAGS) $(FOLDING_FLAG) -I$(INCL_DIR)\
-		$(SRC_DIR)/$@.cpp
+		$(SRC_DIR)/$@.cxx
 
 folding:
 	g++ -c -o $(BUILD_DIR)/$@.o $(CXXFLAGS) $(FOLDING_FLAG) -I$(INCL_DIR) \
-		$(SRC_DIR)/$@.cpp
+		$(SRC_DIR)/$@.cxx
 
 ensemble_utilities:
 	g++ -c -o $(BUILD_DIR)/$@.o $(CXXFLAGS) $(FOLDING_FLAG) -I$(INCL_DIR) \
-		$(SRC_DIR)/$@.cpp
+		$(SRC_DIR)/$@.cxx
 
 rxn_utilities:
 	g++ -c -o $(BUILD_DIR)/$@.o $(CXXFLAGS) $(FOLDING_FLAG) -I$(INCL_DIR) \
-		$(SRC_DIR)/$@.cpp
+		$(SRC_DIR)/$@.cxx
 
 pop_utilities:
 	g++ -c -o $(BUILD_DIR)/$@.o $(CXXFLAGS) $(FOLDING_FLAG) -I$(INCL_DIR) \
-		$(SRC_DIR)/$@.cpp
+		$(SRC_DIR)/$@.cxx
 
 species_utilities:
 	g++ -c -o $(BUILD_DIR)/$@.o $(CXXFLAGS) $(FOLDING_FLAG) -I$(INCL_DIR) \
-		$(SRC_DIR)/$@.cpp
+		$(SRC_DIR)/$@.cxx
 
 binary: types folding ensemble_utilities rxn_utilities pop_utilities species_utilities
-	g++ -o main $(CXXFLAGS) $(SRC_DIR)/toplevel.cpp $(addsuffix .o, $^) \
+	g++ -o main $(CXXFLAGS) $(SRC_DIR)/toplevel.cxx $(addsuffix .o, $^) \
 		-I$(INCL_DIR) -L$(JSONLIBDIR) -ljsoncpp
 
 binary-debug: types folding ensemble_utilities rxn_utilities pop_utilities species_utilities
-	g++ -o main $(CXXFLAGS) $(SRC_DIR)/toplevel.cpp $(addsuffix .o, $^) \
+	g++ -o main $(CXXFLAGS) $(SRC_DIR)/toplevel.cxx $(addsuffix .o, $^) \
 		-I$(INCL_DIR) -L$(JSONLIBDIR) -ljsoncpp
 
 clean:

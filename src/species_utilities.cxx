@@ -1,4 +1,4 @@
-#include "species_utilities.hpp"
+#include "species_utilities.hxx"
 
 species_t species_utilities::make_void_species() {
     species_t void_species;

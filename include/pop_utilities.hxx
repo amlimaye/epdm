@@ -1,4 +1,4 @@
-#include "types.hpp"
+#include "types.hxx"
 
 namespace pop_utilities {
 	population_t make_void_population();

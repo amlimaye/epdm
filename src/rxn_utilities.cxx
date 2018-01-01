@@ -1,7 +1,7 @@
 #include <iostream>
-#include "rxn_utilities.hpp"
-#include "species_utilities.hpp"
-#include "constants.hpp"
+#include "rxn_utilities.hxx"
+#include "species_utilities.hxx"
+#include "constants.hxx"
 
 reaction_t rxn_utilities::spawn_rxn(const species_t spawned_species) {
     reaction_t new_reaction;

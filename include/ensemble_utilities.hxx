@@ -1,4 +1,4 @@
-#include "types.hpp"
+#include "types.hxx"
 #include <json/json.h>
 
 namespace ensemble_utilities {

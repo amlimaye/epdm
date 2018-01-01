@@ -1,4 +1,4 @@
-#include "folding.hpp"
+#include "folding.hxx"
 #include <iostream>
 #include <fstream>
 #include <json/json.h>

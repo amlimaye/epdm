@@ -1,4 +1,4 @@
-#include "types.hpp"
+#include "types.hxx"
 
 namespace species_utilities {
 	species_t make_void_species();

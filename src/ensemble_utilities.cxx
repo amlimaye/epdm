@@ -1,9 +1,9 @@
 #include <iostream>
 #include <random>
-#include "pop_utilities.hpp"
-#include "rxn_utilities.hpp"
-#include "ensemble_utilities.hpp"
-#include "folding.hpp"
+#include "pop_utilities.hxx"
+#include "rxn_utilities.hxx"
+#include "ensemble_utilities.hxx"
+#include "folding.hxx"
 
 ensemble_t ensemble_utilities::initialize_ensemble(const uint32_t seed) {
     //start at time zero with zero propensity

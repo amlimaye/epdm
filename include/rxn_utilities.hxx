@@ -1,4 +1,4 @@
-#include "types.hpp"
+#include "types.hxx"
 
 namespace rxn_utilities {
 	reaction_t spawn_rxn(const species_t spawned_species);
