@@ -1,12 +1,10 @@
-#!/usr/bin/python -u
-
-from __future__ import print_function
 import sys
 import json
 import numpy as np
 import multiprocessing
-import cPickle
-import IPython
+import pickle
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import seaborn
 
@@ -18,7 +16,7 @@ def main(sargs):
         with open(outfile,'r') as f:
             data = json.load(f)
         data_list = data['epdm']
-    
+
         ncores = multiprocessing.cpu_count()
         print('pooling with %d cores' % ncores)
         pool = multiprocessing.Pool(ncores)
@@ -28,7 +26,7 @@ def main(sargs):
         times,full_species_map = collate_all_elements(parsed)
         species_statistics = get_species_statistics(times,full_species_map)
         cache_these = dict(times=times,full_species_map=full_species_map,species_statistics=species_statistics)
-        make_cache(cache_these)    
+        make_cache(cache_these)
 
     else:
         cache = load_cache()
@@ -37,12 +35,12 @@ def main(sargs):
     make_plots(species_statistics,full_species_map)
 
 def make_cache(cache_this,fname='cache.pkl'):
-    with open(fname,'w') as f:
-        cPickle.dump(cache_this,f)
+    with open(fname,'wb') as f:
+        pickle.dump(cache_this,f)
 
 def load_cache(fname='cache.pkl'):
-    with open(fname,'r') as f:
-        cache = cPickle.load(f)
+    with open(fname,'rb') as f:
+        cache = pickle.load(f)
     return cache
 
 def collate_all_elements(parsed):
@@ -96,7 +94,7 @@ def parse_one_elem(elem):
     for species,pop_num in elem['populations'].items():
         species_map[species] = {}
         species_map[species]['num'] = pop_num
-    
+
     tot_num_species = np.sum([species_map[species]['num'] for species in species_map.keys()])
 
     for species in elem['populations'].keys():
