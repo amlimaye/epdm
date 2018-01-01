@@ -11,7 +11,7 @@ std::tuple<bool,int,int> folding::is_foldable(const std::string name) {
         return std::make_tuple(false,0,0);
 
     //load up the contacts JSON file
-    std::string fname = "/u/nyc/limaye/scratch/epdm/contacts/contacts_" + std::to_string(name.length()) + ".json";
+    std::string fname = "contacts/contacts_" + std::to_string(name.length()) + ".json";
     #ifdef __DEBUG
     std::cout << fname << std::endl;
     #endif
