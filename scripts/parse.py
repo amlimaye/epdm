@@ -1,8 +1,4 @@
-#!/usr/bin/env garden-exec
-#{
-#   garden load desres-python/2.7.13-02c7/bin
-#   python -u $0 "$@"
-#}
+#!/usr/bin/python -u
 
 from __future__ import print_function
 import sys
